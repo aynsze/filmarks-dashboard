@@ -1,0 +1,95 @@
+# .github/workflows/update.yml
+# bk1
+# データを取得するActionsファイル
+
+name: Update Filmarks Data
+
+on:
+  workflow_dispatch:
+    inputs:
+      scope:
+        description: "取得範囲"
+        required: true
+        type: choice
+        options:
+          - all
+          - latest
+          - id
+        default: all
+
+      category:
+        description: "カテゴリ"
+        required: true
+        type: choice
+        options:
+          - all
+          - movies
+          - dramas
+          - animes
+        default: all
+
+      target:
+        description: "取得対象"
+        required: true
+        type: choice
+        options:
+          - both
+          - marks
+          - clips
+        default: both
+
+      limit:
+        description: "最新N件（scopeがlatestの場合）"
+        required: false
+        type: string
+        default: "50"
+
+      item_id:
+        description: "作品ID（scopeがidの場合。例：228/337）"
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run scraper
+        env:
+          FILMARKS_USERNAME: ${{ secrets.FILMARKS_USERNAME }}
+        run: |
+          python scraper/main.py \
+            --scope "${{ inputs.scope }}" \
+            --category "${{ inputs.category }}" \
+            --target "${{ inputs.target }}" \
+            --limit "${{ inputs.limit }}" \
+            --item-id "${{ inputs.item_id }}"
+
+      - name: Commit and push updated data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add data/
+
+          if git diff --cached --quiet; then
+            echo "No data changes to commit."
+          else
+            git commit -m "Update Filmarks data"
+            git push
+          fi
