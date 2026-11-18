@@ -6,12 +6,14 @@ import argparse
 import json
 import sys
 from pathlib import Path
+from bs4 import BeautifulSoup
 
 from fetcher import (
     build_list_url,
     build_review_url,
     fetch_html,
     FetchError,
+    NotFoundError,
 )
 from parser import (
     parse_marks_list,
@@ -140,7 +142,29 @@ def fetch_listing_page(username, category, target, page):
 
     print(f"一覧取得: {url}")
 
-    html = fetch_html(url)
+    try:
+        html = fetch_html(url)
+
+    except NotFoundError:
+        print(
+            f"{page}ページ目はHTTP 404です。"
+            "コンテンツがないページとして扱います。"
+        )
+        return []
+
+    # コンテンツなしページを確認
+    soup = BeautifulSoup(html, "html.parser")
+
+    empty_message = soup.select_one(
+        '.p-content__center-img img[alt="表示するコンテンツがありません。"]'
+    )
+
+    if empty_message:
+        print(
+            f"{page}ページ目は表示するコンテンツがありません。"
+            "正常終了します。"
+        )
+        return []
 
     if target == "marks":
         records = parse_marks_list(html, category)

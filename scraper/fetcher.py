@@ -6,6 +6,7 @@ import time
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode, quote
 from urllib.request import Request, urlopen
+from urllib.error import HTTPError
 
 BASE_URL = "https://filmarks.com"
 
@@ -20,6 +21,10 @@ _last_request_time = 0.0
 
 class FetchError(Exception):
     """HTML取得に失敗した場合の例外"""
+    pass
+
+class NotFoundError(Exception):
+    """HTTP 404が発生した場合の例外"""
     pass
 
 def build_list_url(username, category, target, page=1):
@@ -143,7 +148,13 @@ def fetch_html(url):
         except HTTPError as error:
             _last_request_time = time.monotonic()
 
-            # アクセス制限や認証エラーは再試行しない
+            # 404は呼び出し側で処理する
+            if error.code == 404:
+                raise NotFoundError(
+                    f"HTTP 404: {url}"
+                ) from error
+
+            # アクセス制限や認証エラーなど
             if error.code not in (429, 500, 502, 503, 504):
                 raise FetchError(
                     f"HTTPエラー {error.code}: {url}"
