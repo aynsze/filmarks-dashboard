@@ -93,16 +93,16 @@ def parse_arguments():
                 "特定IDを取得する場合はカテゴリを1つ指定してください。"
             )
 
-    # 完全同期は全件・全カテゴリ・marksとclips両方が必須
+    # 完全同期は全件・marksとclips両方が必須
+    # カテゴリは1つでもallでも選択可能
     if args.sync_mode == "full":
         if not (
             args.scope == "all"
-            and args.category == "all"
             and args.target == "both"
         ):
             parser.error(
                 "完全同期では、取得範囲=all、"
-                "カテゴリ=all、取得対象=bothを指定してください。"
+                "取得対象=bothを指定してください。"
             )
 
     return args
@@ -571,7 +571,7 @@ def save_full_sync_data(staged_data):
     取得済みデータと既存JSONを比較し、
     取得結果に存在しない作品を削除する。
 
-    すべてのカテゴリの取得が終わってから呼び出す。
+    カテゴリの取得が終わってから呼び出す。
     """
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -579,8 +579,8 @@ def save_full_sync_data(staged_data):
     output_records = {}
     stats = {}
 
-    # まず全カテゴリの新しいデータをメモリ上で組み立てる
-    for category in CATEGORIES:
+    # まずカテゴリの新しいデータをメモリ上で組み立てる
+    for category in staged_data:
 
         existing = load_data(category)
 
@@ -637,7 +637,7 @@ def save_full_sync_data(staged_data):
             temp_paths[category] = temp_path
 
         # 全ファイルの準備ができたらJSONを置き換える
-        for category in CATEGORIES:
+        for category in staged_data:
             final_path = DATA_DIR / f"{category}.json"
             temp_paths[category].replace(final_path)
 
@@ -646,7 +646,7 @@ def save_full_sync_data(staged_data):
             if temp_path.exists():
                 temp_path.unlink()
 
-    for category in CATEGORIES:
+    for category in staged_data:
         result = stats[category]
 
         print(
@@ -676,7 +676,10 @@ def run():
         print("")
         print("=" * 50)
         print("完全同期モード")
-        print("3カテゴリのmarksとclipsをすべて取得します。")
+        print(
+            f"対象カテゴリ: {', '.join(categories)}"
+        )
+        print("対象: marksとclips")
         print("全取得が成功するまでJSONは変更しません。")
         print("=" * 50)
 
@@ -686,10 +689,10 @@ def run():
                 "clips": [],
                 "marks": [],
             }
-            for category in CATEGORIES
+            for category in categories
         }
 
-        for category in CATEGORIES:
+        for category in categories:
 
             print("")
             print("=" * 50)
