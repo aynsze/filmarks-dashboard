@@ -1,5 +1,5 @@
 # .github/workflows/update.yml
-# bk1
+# bk2
 # データを取得するActionsファイル
 
 name: Update Filmarks Data
@@ -37,6 +37,15 @@ on:
           - marks
           - clips
         default: both
+
+      sync_mode:
+        description: "更新方式"
+        required: true
+        type: choice
+        options:
+          - normal
+          - full
+        default: normal
 
       limit:
         description: "最新N件（scopeがlatestの場合）"
@@ -77,6 +86,7 @@ jobs:
             --scope "${{ inputs.scope }}" \
             --category "${{ inputs.category }}" \
             --target "${{ inputs.target }}" \
+            --sync-mode "${{ inputs.sync_mode }}" \
             --limit "${{ inputs.limit }}" \
             --item-id "${{ inputs.item_id }}"
 

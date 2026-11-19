@@ -1,5 +1,5 @@
 # scraper/fetcher.py
-# bk1
+# bk2
 # Filmarksのページを取得
 
 import time
@@ -23,7 +23,7 @@ class FetchError(Exception):
     """HTML取得に失敗した場合の例外"""
     pass
 
-class NotFoundError(Exception):
+class NotFoundError(FetchError):
     """HTTP 404が発生した場合の例外"""
     pass
 

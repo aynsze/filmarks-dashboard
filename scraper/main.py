@@ -1,9 +1,10 @@
 # scraper/main.py
-# bk1
+# bk2
 # 取得範囲やカテゴリを判断し、JSONを更新
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 from bs4 import BeautifulSoup
@@ -59,6 +60,13 @@ def parse_arguments():
     )
 
     parser.add_argument(
+        "--sync-mode",
+        choices=("normal", "full"),
+        default="normal",
+        help="normal: 通常更新 / full: 完全同期",
+    )
+
+    parser.add_argument(
         "--limit",
         type=int,
         default=50,
@@ -85,6 +93,18 @@ def parse_arguments():
                 "特定IDを取得する場合はカテゴリを1つ指定してください。"
             )
 
+    # 完全同期は全件・全カテゴリ・marksとclips両方が必須
+    if args.sync_mode == "full":
+        if not (
+            args.scope == "all"
+            and args.category == "all"
+            and args.target == "both"
+        ):
+            parser.error(
+                "完全同期では、取得範囲=all、"
+                "カテゴリ=all、取得対象=bothを指定してください。"
+            )
+
     return args
 
 def get_categories(category):
@@ -101,9 +121,6 @@ def get_targets(target):
 
     両方の場合はclipsを先に取得し、
     marksを後から取得する。
-
-    同じ作品IDが両方に存在した場合は、
-    marksの情報を優先する。
     """
 
     if target == "both":
@@ -146,6 +163,11 @@ def fetch_listing_page(username, category, target, page):
         html = fetch_html(url)
 
     except NotFoundError:
+        # 1ページ目の404はユーザー名やURLの誤りの可能性があるため、
+        # 正常終了として扱わない。
+        if page == 1:
+            raise
+
         print(
             f"{page}ページ目はHTTP 404です。"
             "コンテンツがないページとして扱います。"
@@ -167,11 +189,9 @@ def fetch_listing_page(username, category, target, page):
         return []
 
     if target == "marks":
-        records = parse_marks_list(html, category)
-    else:
-        records = parse_clips_list(html, category)
+        return parse_marks_list(html, category)
 
-    return records
+    return parse_clips_list(html, category)
 
 def fetch_all_listing(
     username,
@@ -191,7 +211,7 @@ def fetch_all_listing(
         先頭からlimit件に達するまで取得する。
 
     id:
-        指定IDが見つかるまで取得する。
+        指定作品IDが見つかるまで取得する。
     """
 
     collected = []
@@ -253,8 +273,9 @@ def fetch_all_listing(
             break
 
     else:
-        print(
-            f"警告: 最大ページ数 {MAX_PAGES} に達しました。"
+        raise FetchError(
+            f"最大ページ数 {MAX_PAGES} に達しました。"
+            "ページ送りを確認してください。"
         )
 
     if scope == "id":
@@ -377,15 +398,49 @@ def merge_record(existing, new_record, target):
 
     return merged
 
-def save_data(category, new_records, target):
-    """
-    既存JSONにデータを追加・更新して保存する。
+def clean_record(record):
+    """内部処理用のキーを除外したデータを返す。"""
 
-    作品IDをキーとして扱う。
-    取得対象に含まれない作品は削除しない。
+    return {
+        key: value
+        for key, value in record.items()
+        if not key.startswith("_")
+    }
+
+def save_json_atomically(category, records):
+    """
+    一時ファイルにJSONを書き出してから置き換える。
+    書き込み途中のJSON破損を防ぐ。
     """
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+    path = DATA_DIR / f"{category}.json"
+    temp_path = DATA_DIR / f"{category}.json.tmp"
+
+    try:
+        with temp_path.open("w", encoding="utf-8") as file:
+            json.dump(
+                records,
+                file,
+                ensure_ascii=False,
+                indent=2,
+            )
+            file.write("\n")
+
+        temp_path.replace(path)
+
+    finally:
+        if temp_path.exists():
+            temp_path.unlink()
+
+def save_data(category, new_records, target):
+    """
+    通常更新用。
+
+    既存JSONにデータを追加・更新する。
+    取得対象に含まれない作品は削除しない。
+    """
 
     existing_records = load_data(category)
 
@@ -419,14 +474,7 @@ def save_data(category, new_records, target):
         existing = records_by_id.get(record_id)
 
         if existing is None:
-
-            merged = {
-                key: value
-                for key, value in new_record.items()
-                if not key.startswith("_")
-            }
-
-            records_by_id[record_id] = merged
+            records_by_id[record_id] = clean_record(new_record)
             ordered_ids.append(record_id)
             added += 1
 
@@ -448,31 +496,173 @@ def save_data(category, new_records, target):
         for record_id in ordered_ids
     ]
 
-    path = DATA_DIR / f"{category}.json"
-
-    with path.open("w", encoding="utf-8") as file:
-        json.dump(
-            final_records,
-            file,
-            ensure_ascii=False,
-            indent=2,
-        )
-        file.write("\n")
+    save_json_atomically(category, final_records)
 
     print(
-        f"{path.name}: "
+        f"{category}.json: "
         f"追加 {added}件 / 更新 {updated}件 / "
         f"合計 {len(final_records)}件"
     )
+
+def build_full_sync_records(category, clips, marks, existing_records):
+    """
+    完全同期用のデータを組み立てる。
+
+    clipsに存在する作品とmarksに存在する作品を統合する。
+    両方にある場合はmarksを優先する。
+    """
+
+    old_by_id = {
+        record["id"]: record
+        for record in existing_records
+        if isinstance(record, dict) and record.get("id")
+    }
+
+    clips_by_id = {
+        record["id"]: record
+        for record in clips
+    }
+
+    marks_by_id = {
+        record["id"]: record
+        for record in marks
+    }
+
+    ordered_ids = list(clips_by_id.keys())
+
+    for record_id in marks_by_id:
+        if record_id not in clips_by_id:
+            ordered_ids.append(record_id)
+
+    final_records = []
+
+    for record_id in ordered_ids:
+
+        clip_record = clips_by_id.get(record_id)
+        mark_record = marks_by_id.get(record_id)
+
+        if mark_record is not None:
+            # 既存データを優先してベースにすることで、
+            # レビュー詳細の取得失敗時に評価・日時を引き継ぐ。
+            base_record = (
+                old_by_id.get(record_id)
+                or clip_record
+                or {}
+            )
+
+            merged = merge_record(
+                base_record,
+                mark_record,
+                "marks",
+            )
+
+            final_records.append(clean_record(merged))
+
+        elif clip_record is not None:
+            # marksには存在せずclipsにだけ存在する作品
+            final_records.append(clean_record(clip_record))
+
+    return final_records
+
+def save_full_sync_data(staged_data):
+    """
+    完全同期用。
+
+    取得済みデータと既存JSONを比較し、
+    取得結果に存在しない作品を削除する。
+
+    すべてのカテゴリの取得が終わってから呼び出す。
+    """
+
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+    output_records = {}
+    stats = {}
+
+    # まず全カテゴリの新しいデータをメモリ上で組み立てる
+    for category in CATEGORIES:
+
+        existing = load_data(category)
+
+        final_records = build_full_sync_records(
+            category=category,
+            clips=staged_data[category]["clips"],
+            marks=staged_data[category]["marks"],
+            existing_records=existing,
+        )
+
+        old_by_id = {
+            record["id"]: record
+            for record in existing
+            if isinstance(record, dict) and record.get("id")
+        }
+
+        new_by_id = {
+            record["id"]: record
+            for record in final_records
+        }
+
+        added = len(set(new_by_id) - set(old_by_id))
+        deleted = len(set(old_by_id) - set(new_by_id))
+        updated = sum(
+            1
+            for record_id in set(old_by_id) & set(new_by_id)
+            if old_by_id[record_id] != new_by_id[record_id]
+        )
+
+        output_records[category] = final_records
+        stats[category] = {
+            "added": added,
+            "updated": updated,
+            "deleted": deleted,
+        }
+
+    # すべてのJSONを一時ファイルとして先に書き出す
+    temp_paths = {}
+
+    try:
+        for category, records in output_records.items():
+
+            temp_path = DATA_DIR / f"{category}.json.tmp"
+
+            with temp_path.open("w", encoding="utf-8") as file:
+                json.dump(
+                    records,
+                    file,
+                    ensure_ascii=False,
+                    indent=2,
+                )
+                file.write("\n")
+
+            temp_paths[category] = temp_path
+
+        # 全ファイルの準備ができたらJSONを置き換える
+        for category in CATEGORIES:
+            final_path = DATA_DIR / f"{category}.json"
+            temp_paths[category].replace(final_path)
+
+    finally:
+        for temp_path in temp_paths.values():
+            if temp_path.exists():
+                temp_path.unlink()
+
+    for category in CATEGORIES:
+        result = stats[category]
+
+        print(
+            f"{category}.json: "
+            f"追加 {result['added']}件 / "
+            f"更新 {result['updated']}件 / "
+            f"削除 {result['deleted']}件 / "
+            f"合計 {len(output_records[category])}件"
+        )
 
 def run():
     """スクレイピング全体を実行する。"""
 
     args = parse_arguments()
 
-    username = __import__("os").environ.get(
-        "FILMARKS_USERNAME"
-    )
+    username = os.environ.get("FILMARKS_USERNAME")
 
     if not username:
         raise ValueError(
@@ -482,52 +672,106 @@ def run():
     categories = get_categories(args.category)
     targets = get_targets(args.target)
 
-    for category in categories:
-
+    if args.sync_mode == "full":
         print("")
         print("=" * 50)
-        print(f"カテゴリ: {category}")
+        print("完全同期モード")
+        print("3カテゴリのmarksとclipsをすべて取得します。")
+        print("全取得が成功するまでJSONは変更しません。")
         print("=" * 50)
 
-        # 指定IDの場合はカテゴリごとの形式を確認
-        item_id = None
+        # 既存JSONにはまだ触れず、取得データを一時的に保持する
+        staged_data = {
+            category: {
+                "clips": [],
+                "marks": [],
+            }
+            for category in CATEGORIES
+        }
 
-        if args.scope == "id":
-            item_id = validate_item_id(
-                category,
-                args.item_id,
-            )
-
-        for target in targets:
+        for category in CATEGORIES:
 
             print("")
-            print(f"取得対象: {target}")
+            print("=" * 50)
+            print(f"カテゴリ: {category}")
+            print("=" * 50)
 
-            records = fetch_all_listing(
-                username=username,
-                category=category,
-                target=target,
-                scope=args.scope,
-                limit=args.limit,
-                item_id=item_id,
-            )
+            for target in ("clips", "marks"):
 
-            if not records:
-                print("取得データがありません。")
-                continue
+                print("")
+                print(f"取得対象: {target}")
 
-            if target == "marks":
-                records = enrich_marks(
-                    username,
-                    category,
-                    records,
+                records = fetch_all_listing(
+                    username=username,
+                    category=category,
+                    target=target,
+                    scope="all",
                 )
 
-            save_data(
-                category=category,
-                new_records=records,
-                target=target,
-            )
+                if target == "marks":
+                    records = enrich_marks(
+                        username,
+                        category,
+                        records,
+                    )
+
+                staged_data[category][target] = records
+
+                print(f"{target}: {len(records)}件取得")
+
+        # 全カテゴリ・全対象の取得が終わってから保存する
+        print("")
+        print("すべての一覧取得が完了しました。JSONを更新します。")
+
+        save_full_sync_data(staged_data)
+
+    else:
+        # 通常更新は従来どおり追加・更新のみ
+        for category in categories:
+
+            print("")
+            print("=" * 50)
+            print(f"カテゴリ: {category}")
+            print("=" * 50)
+
+            item_id = None
+
+            if args.scope == "id":
+                item_id = validate_item_id(
+                    category,
+                    args.item_id,
+                )
+
+            for target in targets:
+
+                print("")
+                print(f"取得対象: {target}")
+
+                records = fetch_all_listing(
+                    username=username,
+                    category=category,
+                    target=target,
+                    scope=args.scope,
+                    limit=args.limit,
+                    item_id=item_id,
+                )
+
+                if not records:
+                    print("取得データがありません。")
+                    continue
+
+                if target == "marks":
+                    records = enrich_marks(
+                        username,
+                        category,
+                        records,
+                    )
+
+                save_data(
+                    category=category,
+                    new_records=records,
+                    target=target,
+                )
 
     print("")
     print("Filmarksデータの取得・更新が完了しました。")
