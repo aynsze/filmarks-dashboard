@@ -1,0 +1,77 @@
+<!-- docs/index.html -->
+<!-- bk1 -->
+<!-- -->
+
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#F8F9FA">
+  <title>Filmarks Dashboard</title>
+  <link rel="stylesheet" href="./style.css">
+  <script src="./script.js" defer></script>
+</head>
+
+<body>
+
+  <header class="site-header">
+    <h1 class="site-title">Filmarks Dashboard</h1>
+
+    <nav class="main-nav" aria-label="メインメニュー">
+      <button class="nav-button is-active" data-page="list">
+        一覧
+      </button>
+      <button class="nav-button" data-page="stats">
+        統計
+      </button>
+      <button class="nav-button" data-page="ratings">
+        評価別
+      </button>
+      <button class="nav-button" data-page="years">
+        年別一覧
+      </button>
+    </nav>
+  </header>
+
+  <main class="main-content">
+
+    <!-- 読み込み状態 -->
+    <div id="loading" class="loading-message">
+      データを読み込んでいます...
+    </div>
+
+    <div id="error" class="error-message" hidden>
+      データの読み込みに失敗しました。
+    </div>
+
+    <!-- ➀ 一覧 -->
+    <section id="page-list" class="page-section is-active">
+      <div id="list-content"></div>
+    </section>
+
+    <!-- ➁ 統計 -->
+    <section id="page-stats" class="page-section">
+      <div id="stats-content"></div>
+    </section>
+
+    <!-- ➂ 評価別 -->
+    <section id="page-ratings" class="page-section">
+      <div id="ratings-content"></div>
+    </section>
+
+    <!-- ➃ 年別一覧 -->
+    <section id="page-years" class="page-section">
+      <div id="years-content"></div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <p>Filmarks Dashboard</p>
+  </footer>
+
+</body>
+
+</html>
