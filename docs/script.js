@@ -1,5 +1,5 @@
 // docs/script.js
-// bk2
+// bk3
 // filmarks-dashboard
 
 // GitHub Raw ContentのURL
@@ -257,11 +257,11 @@ function createGrid(items) {
 // カウント付きヘッダー
 function createStatusHeader(label, count) {
   return `
-        <p class="status-block__header">
-            <span>${escapeHTML(label)}</span>
-            <span class="status-block__count">${count}</span>
-        </p>
-    `;
+    <h2 class="status-block__header">
+      <span>${escapeHTML(label)}</span>
+      <span class="status-block__count">${count}</span>
+    </h2>
+  `;
 }
 
 // ===== ➀ 一覧 =====
@@ -292,11 +292,15 @@ function createGenreList(category) {
     );
 
     yearHTML += `
-            <div class="year-group">
-                <h4 class="subsection-title">${year}年</h4>
-                ${createGrid(yearItems)}
-            </div>
-        `;
+    <div class="year-group">
+      <h2>
+        ${year}年
+        <span class="status-block__count">${yearItems.length}</span>
+      </h2>
+
+      ${createGrid(yearItems)}
+    </div>
+  `;
   }
 
   // 日付不明の作品
@@ -306,11 +310,15 @@ function createGenreList(category) {
 
   if (unknownDateItems.length > 0) {
     yearHTML += `
-            <div class="year-group">
-                <h4 class="subsection-title">日付不明</h4>
-                ${createGrid(unknownDateItems)}
-            </div>
-        `;
+    <div class="year-group">
+      <h2>
+        日付不明
+        <span class="status-block__count">${unknownDateItems.length}</span>
+      </h2>
+
+      ${createGrid(unknownDateItems)}
+    </div>
+  `;
   }
 
   if (years.length === 0 && unknownDateItems.length === 0) {
@@ -322,9 +330,9 @@ function createGenreList(category) {
   return `
         <section class="genre-section">
 
-            <h2 class="genre-title">
+            <p class="genre-title">
                 ${category.label}
-            </h2>
+            </p>
 
             <section class="status-section">
                 ${createStatusHeader("観たい作品", watchlist.length)}
@@ -419,7 +427,7 @@ function renderYearStats() {
   const years = getYears(allWatched);
 
   let html = `
-        <h2 class="section-title">年別統計</h2>
+        <p class="section-title">年別統計</p>
     `;
 
   if (years.length === 0) {
@@ -521,16 +529,16 @@ function renderRatings() {
     );
 
     html += `
-            <section class="rating-section">
-                <h2 class="rating-header">
-                    <span>★ ${rating.toFixed(1)}</span>
-                    <span class="rating-count">
-                        ${items.length}作品
-                    </span>
-                </h2>
-                ${createGrid(items)}
-            </section>
-        `;
+    <section class="rating-section">
+      <h2>
+        <span>★ ${rating.toFixed(1)}</span>
+        <span class="status-block__count">
+          ${items.length}
+        </span>
+      </h2>
+      ${createGrid(items)}
+    </section>
+  `;
   }
 
   document.getElementById("ratings-content").innerHTML = html;
@@ -560,17 +568,17 @@ function renderYears() {
     );
 
     html += `
-            <section class="year-section">
-                <h2 class="year-header">
-                    ${year}年
-                    <span class="status-block__count">
-                        ${items.length}
-                    </span>
-                </h2>
+  <section class="year-section">
+      <h2>
+        <span>${year}年</span>
+        <span class="status-block__count">
+          ${items.length}
+        </span>
+      </h2>
 
-                ${createGrid(items)}
-            </section>
-        `;
+      ${createGrid(items)}
+    </section>
+  `;
   }
 
   const unknownItems = watchedItems.filter(
@@ -579,17 +587,17 @@ function renderYears() {
 
   if (unknownItems.length > 0) {
     html += `
-            <section class="year-section">
-                <h2 class="year-header">
-                    日付不明
-                    <span class="status-block__count">
-                        ${unknownItems.length}
-                    </span>
-                </h2>
+    <section class="year-section">
+      <h2>
+        <span>日付不明</span>
+        <span class="status-block__count">
+          ${unknownItems.length}
+        </span>
+      </h2>
 
-                ${createGrid(unknownItems)}
-            </section>
-        `;
+      ${createGrid(unknownItems)}
+    </section>
+  `;
   }
 
   if (watchedItems.length === 0) {
