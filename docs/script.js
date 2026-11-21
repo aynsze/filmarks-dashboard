@@ -427,7 +427,7 @@ function renderYearStats() {
   const years = getYears(allWatched);
 
   let html = `
-        <p class="section-title">年別統計</p>
+        <h3 class="section-title">年別統計</h3>
     `;
 
   if (years.length === 0) {

@@ -13,7 +13,7 @@
   /* 88 + 1 */
   --header-height: 89px;
   --genre-title: 42px;
-  --status-header-height: 41px;
+  --status-header-height: 38px;
 
   /* 文字サイズ */
   --font-heading: clamp(0.95rem, 2.4vw, 1.05rem);
@@ -114,7 +114,7 @@ h2 {
   gap: 8px;
 
   margin: 0 -10px;
-  padding: 8px 12px;
+  padding: 5px 12px;
 
   background-color: var(--background);
   border-bottom: 1px solid var(--border);
@@ -149,7 +149,7 @@ h2 {
 /* 件数 */
 .status-block__count {
   color: var(--sub-text);
-  padding: 1px 4px 2px;
+  padding: 4px 3px;
   border-radius: 4px;
   background-color: var(--border);
   font-size: var(--font-count);
@@ -364,8 +364,10 @@ h2 {
 
 @media (max-width: 500px) {
   :root {
-    /* 86 + 1 */
+    /* -2 */
     --header-height: 87px;
+    --genre-title: 40px;
+    --status-header-height: 35px;
   }
 
   .grid {
