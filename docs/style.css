@@ -1,5 +1,5 @@
 /* docs/style.css */
-/* bk1 */
+/* bk2 */
 /* */
 
 :root {
@@ -12,14 +12,16 @@
 
   /* 88 + 1 */
   --header-height: 89px;
-  --genre-title: 42px;
-  --status-header-height: 38px;
+
+  /* 見出しの高さ */
+  --genre-title: clamp(38px, 10.5vw, 42px);
+  --status-header-height: clamp(35px, 9.5vw, 38px);
 
   /* 文字サイズ */
   --font-heading: clamp(0.95rem, 2.4vw, 1.05rem);
   --font-subheading: clamp(0.85rem, 2.2vw, 0.95rem);
   --font-genre: clamp(1rem, 2.8vw, 1.15rem);
-  --font-count: clamp(0.72rem, 1.8vw, 0.8rem);
+  --font-count: clamp(0.72rem, 1.8vw, 0.85rem);
 }
 
 * {
@@ -104,7 +106,9 @@ body {
 
 /* ===== 見出し共通 ===== */
 h2 {
+  height: var(--status-header-height);
   font-size: var(--font-heading);
+
   position: sticky;
   top: var(--header-height);
   z-index: 10;
@@ -114,7 +118,7 @@ h2 {
   gap: 8px;
 
   margin: 0 -10px;
-  padding: 5px 12px;
+  padding: 0 12px;
 
   background-color: var(--background);
   border-bottom: 1px solid var(--border);
@@ -135,15 +139,21 @@ h2 {
 }
 
 .genre-title {
+  height: var(--genre-title);
   margin: 0 -10px;
-  padding: 7px 8px;
+  padding: 0 8px;
+
+  display: flex;
+  align-items: center;
+
   background-color: var(--background);
   border-bottom: 2px solid var(--border);
   font-size: var(--font-genre);
+  font-weight: bold;
+
   position: sticky;
   top: var(--header-height);
   z-index: 15;
-  font-weight: bold;
 }
 
 /* 件数 */
@@ -366,8 +376,6 @@ h2 {
   :root {
     /* -2 */
     --header-height: 87px;
-    --genre-title: 40px;
-    --status-header-height: 35px;
   }
 
   .grid {
