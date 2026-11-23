@@ -16,7 +16,7 @@
   --nav-height: clamp(35px, 9.2vw, 38px);
 
   /* ヘッダー全体：上下の要素の合計 */
-  --header-height: calc(var(--site-title-height) + var(--nav-height) - 1px);
+  --header-height: calc(var(--site-title-height) + var(--nav-height));
 
   /* コンテンツ見出し */
   --genre-title: clamp(38px, 10vw, 42px);
@@ -146,6 +146,7 @@ h2 {
 
   position: sticky;
   top: var(--header-height);
+  transform: translateY(-1px);
   z-index: 10;
 
   display: flex;
@@ -189,6 +190,7 @@ h2 {
 
   position: sticky;
   top: var(--header-height);
+  transform: translateY(-1px);
   z-index: 15;
 }
 
