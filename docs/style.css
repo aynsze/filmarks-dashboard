@@ -1,5 +1,5 @@
 /* docs/style.css */
-/* bk2 */
+/* bk3 */
 /* */
 
 /* ===== 基本設定 ===== */
@@ -15,8 +15,8 @@
   --site-title-height: clamp(40px, 10.5vw, 44px);
   --nav-height: clamp(35px, 9.2vw, 38px);
 
-  /* ヘッダー全体：上下の要素の合計 + 下線 */
-  --header-height: calc(var(--site-title-height) + var(--nav-height) + 1px);
+  /* ヘッダー全体：上下の要素の合計 */
+  --header-height: calc(var(--site-title-height) + var(--nav-height));
 
   /* コンテンツ見出し */
   --genre-title: clamp(38px, 10vw, 42px);
@@ -44,7 +44,7 @@ body {
     sans-serif;
 }
 
-/* ===== ヘッダー・ナビゲーション ===== */
+/* ===== ヘッダー ===== */
 .site-header {
   position: sticky;
   top: 0;
@@ -75,7 +75,7 @@ body {
   line-height: 1.2;
 }
 
-/* ナビゲーション */
+/* ===== ナビゲーション ===== */
 .main-nav {
   flex: 0 0 var(--nav-height);
   height: var(--nav-height);
@@ -140,7 +140,7 @@ body {
   display: block;
 }
 
-/* ===== 見出し共通 ===== */
+/* ===== 見出し ===== */
 h2 {
   height: var(--status-header-height);
 
@@ -160,6 +160,15 @@ h2 {
 
   font-size: var(--font-heading);
   font-weight: normal;
+}
+
+/* 年別見出し */
+.year-group h2 {
+  top: calc(var(--header-height) + var(--genre-title) + var(--status-header-height));
+
+  z-index: 9;
+  font-size: var(--font-subheading);
+  color: var(--sub-text);
 }
 
 /* ===== ジャンル見出し ===== */
@@ -198,15 +207,6 @@ h2 {
 /* 一覧画面のステータス見出し */
 .status-block__header {
   top: calc(var(--header-height) + var(--genre-title));
-}
-
-/* ===== 年別見出し ===== */
-.year-group h2 {
-  top: calc(var(--header-height) + var(--genre-title) + var(--status-header-height));
-
-  z-index: 9;
-  font-size: var(--font-subheading);
-  color: var(--sub-text);
 }
 
 /* ===== 作品グリッド ===== */
@@ -318,15 +318,11 @@ h2 {
   border-radius: 6px;
 }
 
-.stats-year {
-  margin-bottom: 22px;
-}
-
 .stats-year__header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
+  margin: 8px 0 6px;
   font-weight: 700;
 }
 
